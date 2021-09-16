@@ -1,0 +1,21 @@
+---
+step_cert_token_host: localhost
+step_cert_cli_bin_path: /usr/bin/step
+step_cert_force: false
+step_cert_renewal_timer: "*:1/5"
+step_cert_renewal_delay: 5m
+step_cert_step_path: /etc/step
+step_cert_bootstrap: true
+
+step_cert_ssh_renewal_timer: "*:1/5"
+step_cert_ssh_renewal_delay: 5m
+step_cert_ssh_force: false
+step_cert_ssh_certs: []
+step_cert_ssh_not_after: ""
+step_cert_ssh_principals: []
+step_cert_ssh_id: "{{ ansible_host }}"
+step_cert_ssh_renew_cmds: []
+step_cert_ssh_renew_cmds_continue_on_failure: true
+
+
+step_cert_version: latest

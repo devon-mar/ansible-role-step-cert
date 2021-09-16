@@ -1,0 +1,106 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: testca
+    image: smallstep/step-ca
+    # yamllint disable rule:line-length
+    command: >-
+      /bin/bash -c 'echo "molecule123" > /tmp/capwd; step ca init --no-db --ssh --name="Molecule Test CA" --dns=testca
+      --address=:9000 --provisioner=moleculeprov --password-file /tmp/capwd; exec step-ca --password-file /tmp/capwd
+      $$CONFIGPATH'
+    # yamllint enable rule:line-length
+    pre_build_image: true
+    docker_networks:
+      - name: moleculetest
+        ipam_config:
+          # TEST-NET-2
+          - subnet: 198.51.100.0/24
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.2
+  - name: ca-mgmt
+    image: "${MOLECULE_CENTOS8_IMAGE:-devonm/molecule-test-centos8:latest}"
+    pre_build_image: true
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.4
+  - name: centos8
+    image: "${MOLECULE_CENTOS8_IMAGE:-devonm/molecule-test-centos8:latest}"
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.3
+  - name: centos7
+    image: "${MOLECULE_CENTOS8_IMAGE:-devonm/molecule-test-centos7:latest}"
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.5
+  - name: debian10
+    image: "${MOLECULE_DEBIAN10_IMAGE:-devonm/molecule-test-debian10:latest}"
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.6
+  - name: debian11
+    image: "${MOLECULE_DEBIAN11_IMAGE:-devonm/molecule-test-debian11:latest}"
+    command: ""
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    privileged: true
+    pre_build_image: true
+    networks:
+      - name: moleculetest
+        ipv4_address: 198.51.100.7
+
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        step_cert_ca_url: "https://testca:9000"
+        step_cert_token_host: ca-mgmt
+        step_cert_provisioner: moleculeprov
+        step_cert_provisioner_pass: molecule123
+        step_cert_ca_fingerprint: "{{ lookup('file', '/tmp/ca_fingerprint') }}"
+        step_cert_ssh_id: "{{ ansible_hostname }}"
+        step_cert_ssh_certs:
+          - name: ssh
+            file: /tmp/ssh_host_rsa
+          - name: additional
+            id: "{{ ansible_hostname }}"
+            file: /tmp/ssh_host_rsa2
+            principals:
+              - additional.example.com
+        step_cert_certs:
+          - name: nosans
+            cn: nosans.example.com
+            crt_file: /tmp/nosans.example.com.crt
+            key_file: /tmp/nosans.example.com.key
+            not_after: 2m
+            renew_cmds:
+              - /usr/bin/touch /tmp/renewed
+          - name: withsans
+            cn: withsans.example.com
+            crt_file: /tmp/withsans.example.com.crt
+            key_file: /tmp/withsans.example.com.key
+            sans:
+              - san1.example.com
+              - san2.example.com
+verifier:
+  name: ansible

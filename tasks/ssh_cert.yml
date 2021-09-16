@@ -1,0 +1,91 @@
+---
+- name: Stat the ssh cert ({{ item.name }})
+  stat:
+    path: "{{ item.file }}-cert.pub"
+    get_checksum: false
+    get_attributes: false
+    get_mime: false
+  register: _ssh_stat
+
+- name: Inspect the SSH certificate ({{ item.name }})
+  block:
+    - name: Get cert info as JSON
+      command: step ssh inspect --format json {{ item.file + "-cert.pub" | quote }}
+      changed_when: false
+      register: _step_ssh_inspect
+
+    - name: Parse JSON ({{ item.name }})
+      set_fact:
+        _ssh_json: "{{ _step_ssh_inspect.stdout | from_json }}"
+  when: _ssh_stat.stat.exists
+
+- name: Obtain a certificate ({{ item.name }})
+  block:
+    - name: Obtain a token for ({{ item.name }})
+      shell: >-
+        step ca token --ssh --host
+        --ca-url {{ step_cert_ca_url | quote }}
+        --provisioner {{ step_cert_provisioner }}
+        --password-file <(echo -n "$PROVISIONER_PASS")
+        {% if _ssh_not_after | length > 0 %}--not-after {{ _ssh_not_after }}{% endif %}
+        {% if _ssh_principals | length > 0 %}
+        {%   for i in _ssh_principals + [_ssh_id] %}--principal {{ i | quote }} {% endfor %}
+        {% endif %}
+        {{ _ssh_id | quote }}
+      args:
+        executable: /bin/bash
+      environment:
+        PROVISIONER_PASS: "{{ step_cert_provisioner_pass }}"
+        STEPPATH: "{{ step_cert_step_path }}"
+      register: _ssh_ott
+      delegate_to: "{{ step_cert_token_host }}"
+
+    - name: Sign the public key with the token ({{ item.name }})
+      shell: >-
+        step ssh certificate --host
+        --ca-url {{ step_cert_ca_url }}
+        --token $TOKEN
+        --force
+        --sign
+        {{ _ssh_id | quote }}
+        {{ item.file + ".pub" | quote }}
+      environment:
+        TOKEN: "{{ _ssh_ott.stdout }}"
+        STEPPATH: "{{ step_cert_step_path }}"
+  when: >-
+    not _ssh_stat.stat.exists
+    or step_cert_ssh_force | bool
+    or _ssh_json.KeyID != _ssh_id | default(step_cert_ssh_id)
+    or _ssh_principals | length == 0 and _ssh_json.Principals != [_ssh_id]
+    or _ssh_principals | length > 0 and _ssh_json.Principals != _ssh_principals + [_ssh_id]
+
+- name: Ensure permissions are set on the cert ({{ item.name }})
+  file:
+    path: "{{ item.file + '-cert.pub' }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+    state: file
+
+- name: Ensure the systemd override directory is present ({{ item.name }})
+  file:
+    path: /etc/systemd/system/ssh-cert-renewer@{{ item.name }}.service.d
+    owner: root
+    group: root
+    mode: 0644
+    state: directory
+
+- name: Ensure the systemd override conf file is present ({{ item.name }})
+  template:
+    src: ssh-override.conf.j2
+    dest: /etc/systemd/system/ssh-cert-renewer@{{ item.name }}.service.d/overrides.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: systemd daemon-reload
+
+- name: Ensure the timer is started and enabled ({{ item.name }})
+  systemd:
+    name: ssh-cert-renewer@{{ item.name }}.timer
+    enabled: true
+    state: started

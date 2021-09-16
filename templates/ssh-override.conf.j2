@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+
+[Service]
+
+Environment=CERT_LOCATION={{ item.file + "-cert.pub" | quote }}
+Environment=PRIV_KEY={{ item.file | quote }}
+
+{% for c in item.renew_cmds | default(step_cert_ssh_renew_cmds) %}
+ExecStartPost={% if item.renew_cmds_continue_on_failure | default(step_cert_ssh_renew_cmds_continue_on_failure) %}-{% endif %}{{ c }}
+{% endfor %}

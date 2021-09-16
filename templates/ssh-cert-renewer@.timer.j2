@@ -1,0 +1,20 @@
+{# https://github.com/smallstep/certificates/blob/master/systemd/cert-renewer%40.timer #}
+# {{ ansible_managed }}
+[Unit]
+Description=SSH certificate renewal timer for %I
+Documentation=https://smallstep.com/docs/step-ca/certificate-authority-server-production
+
+[Timer]
+Persistent=true
+
+; Run the timer unit every 5 minutes.
+OnCalendar={{ step_cert_ssh_renewal_timer }}
+
+; Always run the timer on time.
+AccuracySec=1us
+
+; Add jitter to prevent a "thundering hurd" of simultaneous certificate renewals.
+RandomizedDelaySec={{ step_cert_ssh_renewal_delay }}
+
+[Install]
+WantedBy=timers.target

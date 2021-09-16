@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: step_cert
+  author: Devon Mar
+  namespace: devon_mar
+  description: |
+    Installs the step CLI and provisions certificates and SSH certificate using a one time token.
+
+    A systemd timer and service is then configured to automatically renew each certificate.
+  min_ansible_version: 2.9
+  license: Apache
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+    - name: Debian
+      versions:
+        - buster
+        - bullseye

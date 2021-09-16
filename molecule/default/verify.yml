@@ -1,0 +1,148 @@
+---
+- name: Test cert properties
+  hosts: all:!testca:!ca-mgmt
+  gather_facts: false
+  tasks:
+    - name: Get cert info as JSON
+      command: step certificate inspect --format json /tmp/withsans.example.com.crt
+      changed_when: false
+      register: _cert_json_raw
+
+    - name: Parse JSON
+      set_fact:
+        _cert_json: "{{ _cert_json_raw.stdout | from_json }}"
+
+    - name: Assert
+      assert:
+        that:
+          - _cert_json.subject.common_name == ["withsans.example.com"]
+          - _cert_json.extensions.subject_alt_name.dns_names == ["san1.example.com", "san2.example.com"]
+        fail_msg: "{{ _cert_json | string }}"
+
+- name: Test Renewal
+  hosts: all:!testca:!ca-mgmt
+  gather_facts: false
+  tasks:
+    - name: Get the thumbprint of the current cert
+      command: step certificate fingerprint /tmp/nosans.example.com.crt
+      changed_when: false
+      register: _old_fingerprint
+
+    - name: Disable the renewal ExecCondition
+      lineinfile:
+        path: /etc/systemd/system/cert-renewer@.service
+        regexp: ^ExecCondition=
+        state: absent
+
+    - name: Run daemon-reload
+      systemd:
+        daemon_reload: true
+
+    - name: Run the renewal service
+      systemd:
+        name: cert-renewer@nosans.service
+        state: started
+
+    - name: Get the thumbprint of the new cert
+      command: step certificate fingerprint /tmp/nosans.example.com.crt
+      changed_when: false
+      register: _new_fingerprint
+
+    - name: Compare the thumbprints
+      assert:
+        that:
+          - _old_fingerprint.stdout != _new_fingerprint.stdout
+        success_msg: "Old: {{ _old_fingerprint.stdout }} New: {{ _new_fingerprint.stdout }}"
+        fail_msg: "Old: {{ _old_fingerprint.stdout }} New: {{ _new_fingerprint.stdout }}"
+
+    - name: Ensure that the renew command has been ran
+      stat:
+        path: /tmp/renewed
+        get_checksum: false
+        get_attributes: false
+        get_mime: false
+      register: _renew_stat
+      failed_when: not _renew_stat.stat.exists
+
+- name: Test SAN/CN change
+  hosts: all:!testca:!ca-mgmt
+  vars:
+    step_cert_certs:
+      - name: withsans
+        cn: newwithsans.example.com
+        crt_file: /tmp/withsans.example.com.crt
+        key_file: /tmp/withsans.example.com.key
+        sans:
+          - newsan1.example.com
+          - 192.0.2.1
+  tasks:
+    - name: Import the role
+      import_role:
+        name: devon_mar.step_cert
+
+    - name: Get cert info as JSON
+      command: step certificate inspect --format json /tmp/withsans.example.com.crt
+      changed_when: false
+      register: _cert_json_raw
+
+    - name: Parse JSON
+      set_fact:
+        _cert_json: "{{ _cert_json_raw.stdout | from_json }}"
+
+    - name: Assert
+      assert:
+        that:
+          - _cert_json.subject.common_name == ["newwithsans.example.com"]
+          - _cert_json.extensions.subject_alt_name.dns_names == ["newsan1.example.com"]
+          - _cert_json.extensions.subject_alt_name.ip_addresses == ["192.0.2.1"]
+        fail_msg: "{{ _cert_json | string }}"
+
+- name: Test SSH cert properties
+  hosts: all:!testca:!ca-mgmt
+  gather_facts: false
+  tasks:
+    # Need to put it in a 'tasks' folder or ansible-lint fails with:
+    # syntax-check: 'command' is not a valid attribute for a Play
+    - include_tasks: tasks/verify_cert.yml
+      with_items: "{{ step_cert_ssh_certs }}"
+
+- name: Test SSH cert Renewal
+  hosts: all:!testca:!ca-mgmt
+  gather_facts: false
+  tasks:
+    - name: Get the KeyFingerprint of the current cert
+      command: step ssh inspect --format json /tmp/ssh_host_rsa-cert.pub
+      changed_when: false
+      register: _ssh_old
+
+    - name: Disable the renewal ExecCondition
+      lineinfile:
+        path: /etc/systemd/system/ssh-cert-renewer@.service
+        regexp: ^ExecCondition=
+        state: absent
+
+    - name: Run daemon-reload
+      systemd:
+        daemon_reload: true
+
+    - name: Run the renewal service
+      systemd:
+        name: ssh-cert-renewer@ssh.service
+        state: started
+
+    - name: Get the thumbprint of the new cert
+      command: step ssh inspect --format json /tmp/ssh_host_rsa-cert.pub
+      changed_when: false
+      register: _ssh_new
+
+    - name: Parse JSON
+      set_fact:
+        _ssh_new: "{{ _ssh_new.stdout | from_json }}"
+        _ssh_old: "{{ _ssh_old.stdout | from_json }}"
+
+    - name: Compare the serial numbers
+      assert:
+        that:
+          - _ssh_old.Serial != _ssh_new.Serial
+        success_msg: "Old: {{ _ssh_old.Serial }} New: {{ _ssh_new.Serial }}"
+        fail_msg: "Old: {{ _ssh_old.Serial }} New: {{ _ssh_new.Serial }}"

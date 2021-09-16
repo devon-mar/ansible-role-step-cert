@@ -1,0 +1,45 @@
+---
+examples:
+  - name: Obtain a certificate and SSH certificate
+    content: |
+      ```yaml
+      - hosts: all
+        tasks:
+          - import_role:
+              name: step_cert
+            vars:
+              step_cert_ca_url: https://ca.example.com
+              step_cert_provisioner: ansible
+              step_cert_provisioner_pass: password
+              step_cert_ca_fingerprint: 000000000000000000000
+              step_cert_certs:
+                - name: nginx
+                  cn: "{{ ansible_host | lower }}"
+                  crt_file: /etc/pki/tls/certs/nginx.crt
+                  key_file: /etc/pki/tls/private/nginx.key
+                  sans:
+                    - "{{ ansible_host | lower }}"
+                  renew_cmds:
+                    - nginx -s reload
+              # Global ID to use across all SSH certs.
+              step_cert_ssh_id: "{{ ansible_host | lower }}"
+              # Global renew command for all SSH certs.
+              step_cert_ssh_renew_cmds:
+                - systemctl restart sshd
+              step_cert_ssh_certs:
+                - name: ed25519
+                  file: /etc/ssh/ssh_host_ed25519_key
+                - name: ecdsa
+                  file: /etc/ssh/ssh_host_ecdsa_key
+                - name: rsa
+                  file: /etc/ssh/ssh_host_rsa_key
+      ```
+  - name: Only install the cli
+    content: |
+      ```yaml
+      - hosts: localhost
+        tasks:
+          - import_role:
+              name: step_cert
+              tasks_from: cli_install.yml
+      ```

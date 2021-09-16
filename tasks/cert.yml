@@ -1,0 +1,97 @@
+---
+- name: Stat the crt file ({{ item.name }})
+  stat:
+    path: "{{ item.crt_file }}"
+    get_checksum: false
+    get_attributes: false
+    get_mime: false
+  register: _cert_stat
+
+- name: Check the certificate's fields ({{ item.name }})
+  block:
+    - name: Get cert info as JSON
+      command: step certificate inspect --format json {{ item.crt_file | quote }}
+      changed_when: false
+      register: _cert_json_raw
+
+    - name: Parse JSON
+      set_fact:
+        _cert_json: "{{ _cert_json_raw.stdout | from_json }}"
+  when: _cert_stat.stat.exists
+
+- name: Obtain a certificate for ({{ item.name }})
+  block:
+    - name: Obtain a token for ({{ item.name }})
+      shell: >-
+        step ca token --ca-url {{ step_cert_ca_url | quote }}
+        --provisioner {{ step_cert_provisioner }}
+        --password-file <(echo -n "$PROVISIONER_PASS")
+        {% if item.not_after is defined %}--cert-not-after {{ item.not_after }}{% endif %}
+        {% for s in item.sans | default([]) %} --san {{ s }}{% endfor %}
+        {{ item.cn | quote }}
+      args:
+        executable: /bin/bash
+      environment:
+        PROVISIONER_PASS: "{{ step_cert_provisioner_pass }}"
+        STEPPATH: "{{ step_cert_step_path }}"
+      register: _one_time_token
+      delegate_to: "{{ step_cert_token_host }}"
+
+    - name: Exchange the token for a cert ({{ item.name }})
+      shell: >-
+        step ca certificate --ca-url {{ step_cert_ca_url }}
+        --token $TOKEN
+        --force
+        --kty {{ item.kty | default("EC") }}
+        {{ item.cn | quote }}
+        {{ item.crt_file | quote }}
+        {{ item.key_file | quote }}
+      environment:
+        TOKEN: "{{ _one_time_token.stdout }}"
+        STEPPATH: "{{ step_cert_step_path }}"
+
+  when: >-
+    not _cert_stat.stat.exists
+    or step_cert_force | bool
+    or _cert_json.subject.common_name != [item.cn]
+    or (item.sans | default([]) | length > 0
+      and (_cert_json.extensions.subject_alt_name.values() | flatten | symmetric_difference(item.sans) | length) > 0)
+
+- name: Ensure permissions are set on the cert ({{ item.name }})
+  file:
+    path: "{{ item.crt_file }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.crt_mode | default('0644') }}"
+    state: file
+
+- name: Ensure permissions are set on the private key ({{ item.name }})
+  file:
+    path: "{{ item.key_file }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0600') }}"
+    state: file
+
+- name: Ensure the systemd override directory is present ({{ item.name }})
+  file:
+    path: /etc/systemd/system/cert-renewer@{{ item.name }}.service.d
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- name: Ensure the systemd override conf file is present ({{ item.name }})
+  template:
+    src: override.conf.j2
+    dest: /etc/systemd/system/cert-renewer@{{ item.name }}.service.d/overrides.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: systemd daemon-reload
+
+- name: Ensure the timer is started and enabled ({{ item.name }})
+  systemd:
+    name: cert-renewer@{{ item.name }}.timer
+    enabled: true
+    state: started

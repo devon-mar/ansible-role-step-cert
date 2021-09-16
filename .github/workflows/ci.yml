@@ -1,0 +1,58 @@
+---
+name: ci
+
+"on":
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install dependencies
+        run: pip3 install yamllint ansible-lint~=5.0 ansible-core
+
+      - name: Install ansible collections
+        run: ansible-galaxy collection install community.crypto
+
+      - name: Run yamllint
+        run: |
+          yamllint --version
+          yamllint -f github .
+
+      - name: Run ansible-lint
+        run: |
+          ansible-lint --version
+          ansible-lint --force-color
+
+  molecule:
+    name: Molecule
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - name: Install python dependencies
+        run: pip3 install ansible~=4.0 molecule[docker] docker
+
+      - name: Test with molecule
+        run: molecule test
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"

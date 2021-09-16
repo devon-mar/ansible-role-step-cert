@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+
+[Service]
+
+Environment=CERT_LOCATION={{ item.crt_file |quote }} \
+            KEY_LOCATION={{ item.key_file | quote }}
+
+{% for c in item.renew_cmds | default([]) %}
+ExecStartPost={% if item.renew_cmds_continue_on_failure | default(True) %}-{% endif %}{{ c }}
+{% endfor %}

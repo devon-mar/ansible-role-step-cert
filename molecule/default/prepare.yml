@@ -1,0 +1,56 @@
+---
+- name: Save the root fingerprint
+  hosts: testca
+  gather_facts: false
+  tasks:
+    - name: Get the root fingerprint
+      raw: step certificate fingerprint /home/step/certs/root_ca.crt
+      delegate_to: testca
+      register: _ca_fingerprint
+      changed_when: false
+
+    - name: Show the fingerprint
+      debug:
+        var: _ca_fingerprint
+
+    - name: Write the fingerprint to a file on localhost  # noqa risky-file-permissions
+      copy:
+        content: "{{ _ca_fingerprint.stdout }}"
+        dest: /tmp/ca_fingerprint
+      delegate_to: localhost
+
+- name: Prep ca-mgmt
+  hosts: ca-mgmt
+  tasks:
+    - name: Install step cli
+      import_role:
+        name: devon_mar.step_cert
+        tasks_from: cli_install.yml
+
+    - name: Step bootstrap
+      import_role:
+        name: devon_mar.step_cert
+        tasks_from: bootstrap.yml
+
+- name: Generate a SSH pub key
+  hosts: all:!testca:!ca-mgmt
+  tasks:
+    - name: Ensure openssh is present (RHEL)
+      yum:
+        name: openssh
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Ensure openssh-client is present (Debian)
+      apt:
+        name: openssh-client
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Generate an openssh keypair
+      openssh_keypair:
+        path: "{{ item }}"
+        state: present
+      with_items:
+        - /tmp/ssh_host_rsa
+        - /tmp/ssh_host_rsa2

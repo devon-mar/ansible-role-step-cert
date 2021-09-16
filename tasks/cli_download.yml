@@ -1,0 +1,41 @@
+---
+- name: Create a temp directory (localhost)
+  tempfile:
+    state: directory
+  register: temp_dir
+  delegate_to: localhost
+  become: false
+
+- block:
+    - name: Download {{ _step_tar }}
+      get_url:
+        url: "https://github.com/smallstep/cli/releases/download/v{{ step_cert_version }}/{{ _step_tar }}"
+        checksum: sha256:https://github.com/smallstep/cli/releases/download/v{{ step_cert_version }}/checksums.txt
+        dest: "{{ temp_dir.path }}"
+      register: _step_cli_tar
+      delegate_to: localhost
+      become: false
+
+    - name: Unarchive the tar (localhost)
+      unarchive:
+        src: "{{ _step_cli_tar.dest }}"
+        dest: "{{ temp_dir.path }}"
+        remote_src: true
+        extra_opts: [--strip-components=1]
+      delegate_to: localhost
+      become: false
+
+    - name: Ensure the step binary is copied to the host
+      copy:
+        src: "{{ temp_dir.path }}/bin/step"
+        dest: "{{ step_cert_cli_bin_path }}"
+        owner: root
+        group: root
+        mode: 0755
+  always:
+    - name: Remove the temp directory (localhost)
+      file:
+        state: absent
+        path: "{{ temp_dir.path }}"
+      delegate_to: localhost
+      become: false

@@ -1,0 +1,21 @@
+---
+- name: Ensure the cert-renewer service is templated
+  template:
+    src: cert-renewer@.service.j2
+    dest: /etc/systemd/system/cert-renewer@.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: systemd daemon-reload
+
+- name: Ensure the cert-renewer timer is templated
+  template:
+    src: cert-renewer@.timer.j2
+    dest: /etc/systemd/system/cert-renewer@.timer
+    owner: root
+    group: root
+    mode: 0644
+  notify: systemd daemon-reload
+
+- name: flush_handlers
+  meta: flush_handlers

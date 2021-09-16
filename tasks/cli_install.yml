@@ -1,0 +1,8 @@
+---
+# This file exists so that "tasks_from" can
+# be used to only install the step CLI.
+
+- import_tasks: cli_precheck.yml
+
+- import_tasks: cli_download.yml
+  when: not _bin_stat.stat.exists or ("Smallstep CLI/" ~ step_cert_version) not in  _step_cli_ver.stdout

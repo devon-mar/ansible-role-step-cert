@@ -1,0 +1,29 @@
+---
+- name: Get cert info as JSON
+  command: step ssh inspect --format json {{ item.file }}-cert.pub
+  changed_when: false
+  register: _ssh_json_raw
+
+- name: Parse JSON
+  set_fact:
+    _ssh_json: "{{ _ssh_json_raw.stdout | from_json }}"
+
+- name: Assert KeyID
+  assert:
+    that:
+      - _ssh_json.KeyID == "{{ item.id | default(ansible_host) }}"
+    fail_msg: "{{ _ssh_json | string }}"
+
+- name: Assert Principals (len == 0)
+  assert:
+    that:
+      - _ssh_json.Principals == [item.id | default(ansible_host)]
+    fail_msg: "{{ _ssh_json | string }}"
+  when: item.principals is undefined
+
+- name: Assert Principals (len > 0)
+  assert:
+    that:
+      - _ssh_json.Principals | sort == ([item.id | default(ansible_host)] + item.principals) | sort
+    fail_msg: "{{ _ssh_json | string }}"
+  when: item.principals is defined

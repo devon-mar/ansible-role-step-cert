@@ -1,0 +1,5 @@
+---
+- name: Converge
+  hosts: all:!testca:!ca-mgmt
+  roles:
+    - role: devon_mar.step_cert

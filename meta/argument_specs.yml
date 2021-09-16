@@ -1,0 +1,190 @@
+---
+argument_specs:
+  cli_install:
+    options: &install_options
+      step_cert_version:
+        type: str
+        default: latest
+        description: >-
+          The version (without `v`) of the step cli to install or `latest` for the
+          latest release on GitHub.
+      step_cert_cli_bin_path:
+        type: str
+        default: /usr/bin/step
+        description: The path to install `step` to.
+  main:
+    options:
+      <<: *install_options
+      step_cert_ca_url:
+        type: str
+        required: true
+        description: The URL for the CA. It should start with `https://`
+      step_cert_provisioner:
+        type: str
+        required: true
+        description: The name of a JWK provisioner.
+      step_cert_provisioner_pass:
+        type: str
+        required: true
+        description: The password for the JWK provisioner.
+      step_cert_token_host:
+        type: str
+        default: localhost
+        description: The host to run `step ca token` on.
+      step_cert_certs:
+        type: list
+        elements: dict
+        required: true
+        description: A dict of certs to provision.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name for the certificate. Used to name the systemd service and timer.
+          cn:
+            type: str
+            required: true
+            description: The CN of the cert.
+          crt_file:
+            type: str
+            required: true
+            description: The path to the cert file.
+          key_file:
+            type: str
+            required: true
+            description: The path to the key file.
+          sans:
+            type: list
+            elements: str
+            required: false
+          kty:
+            type: str
+            choices:
+              - EC
+              - OKP
+              - RSA
+            default: EC
+            description: The kty to build the certificate upon.
+          renew_cmds:
+            type: list
+            elements: str
+            description: A list of commands to run after renewing the certificate
+          renew_cmds_continue_on_failure:
+            type: bool
+            default: true
+            description: Run the next renew command if the previous one fails.
+          not_after:
+            type: str
+            description: >-
+              The time/duration of when the ceritficate validity ends.
+              If omitted, the argument won't be passed.
+          owner:
+            type: str
+            default: root
+          group:
+            type: str
+            default: root
+          mode:
+            type: str
+            default: "0600"
+          crt_mode:
+            type: str
+            default: "0644"
+      step_cert_ssh_certs:
+        type: list
+        elements: dict
+        default: []
+        description: A dict of SSH certs to provision.
+        options:
+          name:
+            type: str
+            required: true
+            description: Name for the certificate. Used to name the systemd service and timer.
+          id:
+            type: str
+            description: The key ID of the SSH certificate
+          file:
+            type: path
+            required: true
+            description: >-
+              The path to the private key. If the private_key is `/etc/ssh/ssh_host_rsa_key`,
+              this role expects the public key to have the name `/etc/ssh/ssh_host_rsa_key.pub` and will
+              store the ssh certificate as `/etc/ssh/ssh_host_rsa_key-cert.pub`.
+          principals:
+            type: list
+            elements: str
+            default: []
+            description: List of additional principals to add to the SSH certificate.
+          not_after:
+            type: str
+            description: >-
+              The time/duration of when the SSH ceritficate validity ends.
+              If omitted or empty, the argument won't be passed.
+          renew_cmds:
+            type: list
+            elements: str
+            description: A list of commands to run after renewing the certificate. Overrides `step_cert_ssh_renew_cmds`.
+          renew_cmds_continue_on_failure:
+            type: bool
+            description: >-
+              Run the next renew command if the previous one fails.
+              Overrides `step_cert_ssh_renew_cmds_continue_on_failure`.
+          owner:
+            type: str
+            default: root
+          group:
+            type: str
+            default: root
+          mode:
+            type: str
+            default: "0644"
+      step_cert_ssh_id:
+        type: str
+        default: "`ansible_host`"
+        description: The default key ID of the SSH certificate.
+      step_cert_ssh_principals:
+        type: list
+        elements: str
+        default: []
+        description: List of default principals for SSH certificates.
+      step_cert_ssh_not_after:
+        type: str
+        description: >-
+          The default time/duration of when the SSH ceritficate validity ends.
+          If omitted or empty, the argument won't be passed.
+      step_cert_ssh_renew_cmds:
+        type: list
+        elements: str
+        description: Default list of commands to run after renewing the ssh certificate
+      step_cert_ssh_renew_cmds_continue_on_failure:
+        type: bool
+        default: true
+        description: Run the next renew command if the previous one fails.
+      step_cert_step_path:
+        type: str
+        default: /etc/step
+        description: The step configuration directory.
+      step_cert_force:
+        type: bool
+        default: false
+        description: Overwrite any existing certificates with a new one.
+      step_cert_ssh_force:
+        type: bool
+        default: false
+        description: Overwrite any existing SSH certificates with a new one.
+      step_cert_renewal_timer:
+        type: str
+        default: "*:1/5"
+        description: systemd calendar expression for the renewal timer.
+      step_cert_renewal_delay:
+        type: str
+        default: 5m
+        description: Random delay for the renewal timer.
+      step_cert_ssh_renewal_timer:
+        type: str
+        default: "*:1/5"
+        description: systemd calendar expression for the SSH renewal timer.
+      step_cert_ssh_renewal_delay:
+        type: str
+        default: 5m
+        description: Random delay for the SSH renewal timer.

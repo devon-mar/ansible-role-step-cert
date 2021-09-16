@@ -1,0 +1,27 @@
+---
+- import_tasks: cli_install.yml
+
+- import_tasks: bootstrap.yml
+
+- import_tasks: systemd.yml
+  when: step_cert_certs | length > 0
+
+- import_tasks: systemd_ssh.yml
+  when: step_cert_ssh_certs | length > 0
+
+- include_tasks: cert.yml
+  with_items: "{{ step_cert_certs }}"
+  loop_control:
+    label: "{{ item.cn }}"
+
+- include_tasks: ssh_cert.yml
+  with_items: "{{ step_cert_ssh_certs }}"
+  vars:
+    _ssh_not_after: "{{ item.not_after | default(step_cert_ssh_not_after) }}"
+    _ssh_principals: "{{ item.principals | default(step_cert_ssh_principals) }}"
+    _ssh_id: "{{ item.id | default(step_cert_ssh_id) }}"
+    _renew_cmds: "{{ item.renew_cmds | default(step_cert_ssh_renew_cmds) }}"
+    _renew_cmds_continue: >-
+      "{{ item.renew_cmds_continue_on_failure | default(step_cert_ssh_renew_cmds_continue_on_failure) }}"
+  loop_control:
+    label: "{{ item.name }}"

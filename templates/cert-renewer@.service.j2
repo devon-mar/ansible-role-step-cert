@@ -1,0 +1,25 @@
+{# https://raw.githubusercontent.com/smallstep/certificates/master/systemd/cert-renewer%40.service #}
+# {{ ansible_managed }}
+
+[Unit]
+Description=Certificate renewer for %I
+After=network-online.target
+Documentation=https://smallstep.com/docs/step-ca/certificate-authority-server-production
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+User=root
+
+Environment=STEPPATH={{ step_cert_step_path | quote }}
+
+; ExecCondition checks if the certificate is ready for renewal,
+; based on the exit status of the command.
+; (In systemd 242 or below, you can use ExecStartPre= here.)
+ExecCondition=/usr/bin/step certificate needs-renewal $CERT_LOCATION
+
+; ExecStart renews the certificate, if ExecStartPre was successful.
+ExecStart={{ step_cert_cli_bin_path | quote }} ca renew --ca-url {{ step_cert_ca_url | quote }} --force $CERT_LOCATION $KEY_LOCATION
+
+[Install]
+WantedBy=multi-user.target

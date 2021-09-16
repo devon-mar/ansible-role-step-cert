@@ -1,0 +1,25 @@
+---
+- name: Ensure the step config directory is present
+  file:
+    path: "{{ step_cert_step_path }}"
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+
+- block:
+    - name: Check for defaults.json
+      stat:
+        path: "{{ step_cert_step_path }}/config/defaults.json"
+        get_checksum: false
+        get_attributes: false
+        get_mime: false
+      register: _defaults_json_stat
+
+    - name: Run step ca bootstrap
+      command: step ca bootstrap --ca-url {{ step_cert_ca_url | quote }} --fingerprint {{ step_cert_ca_fingerprint }}
+      environment:
+        STEPPATH: "{{ step_cert_step_path }}"
+      changed_when: true
+      when: not _defaults_json_stat.stat.exists
+  when: step_cert_bootstrap | bool

@@ -1,0 +1,28 @@
+---
+- block:
+    - name: Get the latest version of step-cli
+      uri:
+        url: https://api.github.com/repos/smallstep/cli/releases/latest
+        return_content: true
+      register: _gh_latest
+      delegate_to: localhost
+      run_once: true
+
+    - name: Set step_cert_version
+      set_fact:
+        step_cert_version: "{{ _gh_latest.json.tag_name[1:] }}"
+  when: step_cert_version == "latest"
+
+- name: Stat the binary
+  stat:
+    path: "{{ step_cert_cli_bin_path }}"
+    get_checksum: false
+    get_attributes: false
+    get_mime: false
+  register: _bin_stat
+
+- name: Get the step CLI version
+  command: "{{ step_cert_cli_bin_path }} --version"
+  changed_when: false
+  when: _bin_stat.stat.exists
+  register: _step_cli_ver
