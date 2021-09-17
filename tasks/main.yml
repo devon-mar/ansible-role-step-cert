@@ -12,7 +12,7 @@
 - include_tasks: cert.yml
   with_items: "{{ step_cert_certs }}"
   loop_control:
-    label: "{{ item.cn }}"
+    label: "{{ item.name }}"
 
 - include_tasks: ssh_cert.yml
   with_items: "{{ step_cert_ssh_certs }}"
