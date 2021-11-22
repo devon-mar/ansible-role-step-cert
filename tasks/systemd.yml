@@ -1,4 +1,14 @@
 ---
+- name: Get the systemd version
+  command: systemctl --version # noqa command-instead-of-module
+  changed_when: false
+  check_mode: false
+  register: _systemd_version_raw
+
+- name: Set systemd version fact
+  set_fact:
+    _systemd_version: "{{ _systemd_version_raw.stdout_lines[0] | regex_replace('^systemd\\s(\\d+).*$', '\\1') | int }}"
+
 - name: Ensure the cert-renewer service is templated
   template:
     src: cert-renewer@.service.j2
