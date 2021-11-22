@@ -31,7 +31,7 @@
     - name: Disable the renewal ExecCondition
       lineinfile:
         path: /etc/systemd/system/cert-renewer@.service
-        regexp: ^ExecCondition=
+        regexp: ^(ExecCondition|ExecStartPre)=
         state: absent
 
     - name: Run daemon-reload
