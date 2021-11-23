@@ -5,7 +5,9 @@
 Description=Certificate renewer for %I
 After=network-online.target
 Documentation=https://smallstep.com/docs/step-ca/certificate-authority-server-production
+{% if _systemd_version | int >= 230 %}
 StartLimitIntervalSec=0
+{% endif %}
 
 [Service]
 Type=oneshot
@@ -16,7 +18,10 @@ Environment=STEPPATH={{ step_cert_step_path | quote }}
 ; ExecCondition checks if the certificate is ready for renewal,
 ; based on the exit status of the command.
 ; (In systemd 242 or below, you can use ExecStartPre= here.)
-{% if _systemd_version | int <= 242 %}ExecStartPre{% else %}ExecCondition{% endif %}=/usr/bin/step certificate needs-renewal $CERT_LOCATION
+{% if _systemd_version | int < 243 %}ExecStartPre{% else %}ExecCondition{% endif %}=/usr/bin/step certificate needs-renewal $CERT_LOCATION
+{% if _systemd_version | int < 230 %}
+StartLimitInterval=0
+{% endif %}
 
 ; ExecStart renews the certificate, if ExecStartPre was successful.
 ExecStart={{ step_cert_cli_bin_path | quote }} ca renew --ca-url {{ step_cert_ca_url | quote }} --force $CERT_LOCATION $KEY_LOCATION
