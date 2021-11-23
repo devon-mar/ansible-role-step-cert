@@ -21,13 +21,25 @@
 
 - name: Test systemd units
   hosts: all:!testca:!ca-mgmt
-  gather_facts: false
   tasks:
+    - name: Get the systemd version
+      command: systemctl --version  # noqa command-instead-of-module
+      changed_when: false
+      check_mode: false
+      register: _systemd_version_raw
+
+    - name: Set systemd version fact
+      set_fact:
+        _systemd_version: "{{ _systemd_version_raw.stdout_lines[0] | regex_replace('^systemd\\s(\\d+).*$', '\\1') | int }}"
+
     - name: systemd-analyze verify
       command: systemd-analyze verify {{ item }}
       with_items:
-        - ssh-cert-renewer@.service
-        - cert-renewer@.service
+        - ssh-cert-renewer@{{ _instance }}.service
+        - cert-renewer@{{ _instance }}.service
+      vars:
+        # https://github.com/systemd/systemd/commit/25f17e47f9a76d6b6ee5f10972ad5939255046ca
+        _instance: "{% if _systemd_version | int < 229 %}placeholder{% endif %}"
       changed_when: false
       ignore_errors: true
       register: systemd_analyze
