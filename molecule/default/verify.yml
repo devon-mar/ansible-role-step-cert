@@ -26,8 +26,9 @@
     - name: systemd-analyze verify
       command: systemd-analyze verify {{ item }}
       with_items:
-        - /etc/systemd/system/ssh-cert-renewer@.service
-        - /etc/systemd/system/cert-renewer@.service
+        - ssh-cert-renewer@.service
+        - cert-renewer@.service
+      changed_when: false
       ignore_errors: true
       register: systemd_analyze
 
