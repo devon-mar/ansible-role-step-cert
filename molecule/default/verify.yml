@@ -19,6 +19,24 @@
           - _cert_json.extensions.subject_alt_name.dns_names == ["san1.example.com", "san2.example.com"]
         fail_msg: "{{ _cert_json | string }}"
 
+- name: Test systemd units
+  hosts: all:!testca:!ca-mgmt
+  gather_facts: false
+  tasks:
+    - name: systemd-analyze verify
+      command: systemd-analyze verify {{ item }}
+      with_items:
+        - /etc/systemd/system/ssh-cert-renewer@.service
+        - /etc/systemd/system/cert-renewer@.service
+      ignore_errors: true
+      register: systemd_analyze
+
+    - name: Assert
+      assert:
+        that:
+          - systemd_analyze is not failed
+        fail_msg: "{{ systemd_analyze | string }}"
+
 - name: Test Renewal
   hosts: all:!testca:!ca-mgmt
   gather_facts: false
