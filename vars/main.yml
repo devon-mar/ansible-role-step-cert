@@ -8,3 +8,11 @@ _step_arch_map:
 
 _step_tar: >-
   step_linux_{{ step_cert_version }}_{{ _step_arch_map[ansible_architecture] | default(ansible_architecture) }}.tar.gz
+
+# https://github.com/redhat-plumbers/systemd-rhel8/pull/48
+_systemd_exec_condition: >-
+  {%- if _systemd_version | int > 242 or (ansible_os_family == "RedHat" and ansible_distribution_major_version | int == 8 and _systemd_version | int >= 239) -%}
+  ExecCondition
+  {%- else -%}
+  ExecStartPre
+  {%- endif -%}

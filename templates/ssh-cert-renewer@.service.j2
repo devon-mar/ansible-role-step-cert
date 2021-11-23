@@ -18,7 +18,7 @@ Environment=STEPPATH={{ step_cert_step_path | quote }}
 ; ExecCondition checks if the certificate is ready for renewal,
 ; based on the exit status of the command.
 ; (In systemd 242 or below, you can use ExecStartPre= here.)
-{% if _systemd_version | int < 243 %}ExecStartPre{% else %}ExecCondition{% endif %}=/usr/bin/step ssh needs-renewal $CERT_LOCATION
+{{ _systemd_exec_condition }}=/usr/bin/step ssh needs-renewal $CERT_LOCATION
 {% if _systemd_version | int < 230 %}
 StartLimitInterval=0
 {% endif %}
