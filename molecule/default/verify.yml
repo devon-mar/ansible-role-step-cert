@@ -30,7 +30,8 @@
 
     - name: Set systemd version fact
       set_fact:
-        _systemd_version: "{{ _systemd_version_raw.stdout_lines[0] | regex_replace('^systemd\\s(\\d+).*$', '\\1') | int }}"
+        _systemd_version: >-
+          {{ _systemd_version_raw.stdout_lines[0] | regex_replace('^systemd\\s(\\d+).*$', '\\1') | int }}
 
     - name: systemd-analyze verify
       command: systemd-analyze verify {{ item }}
