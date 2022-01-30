@@ -42,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          path: devon_mar.step_cert
 
       - name: Set up Python 3
         uses: actions/setup-python@v2
