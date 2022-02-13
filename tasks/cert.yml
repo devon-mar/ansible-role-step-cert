@@ -36,6 +36,7 @@
         STEPPATH: "{{ step_cert_step_path }}"
       register: _one_time_token
       delegate_to: "{{ step_cert_token_host }}"
+      changed_when: true
 
     - name: Exchange the token for a cert ({{ item.name }})
       shell: >-
@@ -49,6 +50,7 @@
       environment:
         TOKEN: "{{ _one_time_token.stdout }}"
         STEPPATH: "{{ step_cert_step_path }}"
+      changed_when: true
 
   when: >-
     not _cert_stat.stat.exists

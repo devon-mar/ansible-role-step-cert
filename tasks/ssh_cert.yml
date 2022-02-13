@@ -37,6 +37,7 @@
       environment:
         PROVISIONER_PASS: "{{ step_cert_provisioner_pass }}"
         STEPPATH: "{{ step_cert_step_path }}"
+      changed_when: true
       register: _ssh_ott
       delegate_to: "{{ step_cert_token_host }}"
 
@@ -52,6 +53,7 @@
       environment:
         TOKEN: "{{ _ssh_ott.stdout }}"
         STEPPATH: "{{ step_cert_step_path }}"
+      changed_when: true
   when: >-
     not _ssh_stat.stat.exists
     or step_cert_ssh_force | bool
