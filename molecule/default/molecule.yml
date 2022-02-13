@@ -27,8 +27,8 @@ platforms:
     networks:
       - name: moleculetest
         ipv4_address: 198.51.100.4
-  - name: centos8
-    image: "${MOLECULE_CENTOS8_IMAGE:-devonm/molecule-test-centos8:latest}"
+  - name: rockylinux8
+    image: "${MOLECULE_CENTOS8_IMAGE:-devonm/molecule-test-rockylinux8:latest}"
     command: ""
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
